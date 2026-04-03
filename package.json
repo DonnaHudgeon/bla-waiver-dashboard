@@ -1,0 +1,13 @@
+{
+  "name": "bla-waiver-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BLA Waiver Check-In Dashboard - Cross-references Rezdy bookings with Waiver Forever signed waivers",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  }
+}
