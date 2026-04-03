@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>BLA Waiver Check-In</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F0EB;
+    --surface: #FFFFFF;
+    --surface-alt: #FAF7F4;
+    --border: #E8E0D8;
+    --border-strong: #D4C9BD;
+    --text: #2C2418;
+    --text-muted: #8C7E6E;
+    --text-light: #B0A494;
+    --signed: #2B8C5E;
+    --signed-bg: #E8F5EE;
+    --signed-border: #B8DFCA;
+    --unsigned: #C44B2F;
+    --unsigned-bg: #FCEAE6;
+    --unsigned-border: #F0C4BA;
+    --accent: #1A6B8A;
+    --accent-light: #E6F2F7;
+    --shadow-sm: 0 1px 3px rgba(44,36,24,0.06);
+    --shadow-md: 0 4px 12px rgba(44,36,24,0.08);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { max-width: 860px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  /* Header */
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo-mark { width: 38px; height: 38px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 15px; letter-spacing: -0.5px; }
+  .header-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .refresh-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-muted); font-size: 13px; font-family: inherit; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
+  .refresh-btn:hover { background: var(--surface-alt); color: var(--text); }
+  .refresh-btn svg { width: 14px; height: 14px; }
+  .refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* PIN screen */
+  .pin-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 16px; }
+  .pin-screen .logo-mark { width: 56px; height: 56px; font-size: 22px; }
+  .pin-screen h2 { font-size: 20px; font-weight: 700; }
+  .pin-screen p { font-size: 14px; color: var(--text-muted); }
+  .pin-input { width: 200px; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: 'JetBrains Mono', monospace; font-size: 20px; text-align: center; letter-spacing: 8px; background: var(--surface); outline: none; transition: border-color 0.15s; }
+  .pin-input:focus { border-color: var(--accent); }
+  .pin-input.error { border-color: var(--unsigned); animation: shake 0.3s ease; }
+  @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+  .pin-go { padding: 10px 32px; border: none; border-radius: var(--radius-sm); background: var(--accent); color: white; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .pin-go:hover { opacity: 0.9; }
+
+  /* Session Selector */
+  .session-selector { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
+  .session-selector-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 10px; }
+  .session-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .session-pill { padding: 10px 16px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface-alt); font-family: inherit; font-size: 14px; font-weight: 500; color: var(--text); cursor: pointer; transition: all 0.15s ease; display: flex; flex-direction: column; gap: 2px; min-width: 140px; }
+  .session-pill:hover { border-color: var(--accent); background: var(--accent-light); }
+  .session-pill.active { border-color: var(--accent); background: var(--accent-light); box-shadow: 0 0 0 1px var(--accent); }
+  .session-pill-time { font-weight: 700; font-size: 15px; font-family: 'JetBrains Mono', monospace; }
+  .session-pill-info { font-size: 12px; color: var(--text-muted); font-weight: 400; }
+
+  /* Stats */
+  .stats-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+  .stat-card { flex: 1; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow-sm); }
+  .stat-value { font-size: 28px; font-weight: 700; letter-spacing: -1px; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+  .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-top: 4px; }
+  .stat-card.signed .stat-value { color: var(--signed); }
+  .stat-card.unsigned .stat-value { color: var(--unsigned); }
+
+  /* Progress */
+  .progress-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 20px; }
+  .progress-fill { height: 100%; background: var(--signed); border-radius: 3px; transition: width 0.4s ease; }
+
+  /* All signed banner */
+  .all-signed-banner { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; background: var(--signed-bg); border: 1.5px solid var(--signed-border); border-radius: var(--radius); color: var(--signed); font-weight: 600; font-size: 15px; margin-bottom: 16px; }
+
+  /* Guest list */
+  .guest-list-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; margin-bottom: 8px; }
+  .guest-list-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+  .filter-tabs { display: flex; gap: 4px; }
+  .filter-tab { padding: 5px 12px; border: none; border-radius: 5px; background: transparent; font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.15s ease; }
+  .filter-tab:hover { background: var(--border); }
+  .filter-tab.active { background: var(--text); color: var(--bg); }
+
+  .guest-list { display: flex; flex-direction: column; gap: 6px; }
+  .guest-row { display: flex; align-items: center; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); transition: all 0.15s ease; gap: 12px; }
+  .guest-row:hover { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
+  .guest-row.unsigned-row { border-left: 3px solid var(--unsigned); }
+  .guest-row.signed-row { border-left: 3px solid var(--signed); }
+
+  .status-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .status-dot.signed { background: var(--signed-bg); border: 1.5px solid var(--signed-border); color: var(--signed); }
+  .status-dot.unsigned { background: var(--unsigned-bg); border: 1.5px solid var(--unsigned-border); color: var(--unsigned); }
+  .status-dot svg { width: 16px; height: 16px; }
+
+  .guest-info { flex: 1; min-width: 0; }
+  .guest-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .guest-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .guest-meta-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--text-light); flex-shrink: 0; }
+
+  .guest-pax { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; padding: 3px 8px; border-radius: 4px; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text-muted); flex-shrink: 0; }
+
+  .sign-btn { padding: 8px 16px; border: 1.5px solid var(--unsigned); border-radius: var(--radius-sm); background: var(--unsigned-bg); color: var(--unsigned); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; flex-shrink: 0; white-space: nowrap; }
+  .sign-btn:hover { background: var(--unsigned); color: white; }
+
+  .signed-label { font-size: 12px; font-weight: 600; color: var(--signed); padding: 8px 0; flex-shrink: 0; font-family: 'JetBrains Mono', monospace; }
+
+  /* States */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-state-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .empty-state-text { font-size: 14px; }
+  .loading-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
+
+  .auto-refresh-bar { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; font-size: 11px; color: var(--text-light); margin-top: 20px; }
+  .auto-refresh-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--signed); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+  .error-banner { padding: 12px 16px; background: var(--unsigned-bg); border: 1px solid var(--unsigned-border); border-radius: var(--radius); color: var(--unsigned); font-size: 13px; margin-bottom: 16px; }
+
+  @media (max-width: 600px) {
+    .stats-bar { gap: 6px; }
+    .stat-card { padding: 10px 12px; }
+    .stat-value { font-size: 22px; }
+    .session-pill { min-width: 120px; padding: 8px 12px; }
+    .guest-row { padding: 12px; }
+    .guest-name { font-size: 14px; }
+    .guest-pax { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo-mark">BLA</div>
+      <div>
+        <div class="header-title">Waiver Check-In</div>
+        <div class="header-subtitle">Bonaire Landsailing Adventures</div>
+      </div>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="handleRefresh()" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+      Refresh
+    </button>
+  </div>
+
+  <!-- PIN Screen -->
+  <div id="pinScreen" class="pin-screen">
+    <div class="logo-mark">BLA</div>
+    <h2>Waiver Check-In</h2>
+    <p>Enter your team PIN to continue</p>
+    <input class="pin-input" id="pinInput" type="password" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="----" autocomplete="off">
+    <button class="pin-go" onclick="submitPin()">Open Dashboard</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" style="display:none;">
+    <div id="errorBanner" class="error-banner" style="display:none;"></div>
+
+    <div class="session-selector">
+      <div class="session-selector-label" id="sessionLabel">Loading sessions...</div>
+      <div class="session-pills" id="sessionPills"></div>
+    </div>
+
+    <div id="statsBar" class="stats-bar" style="display:none;">
+      <div class="stat-card"><div class="stat-value" id="totalGuests">0</div><div class="stat-label">Total Guests</div></div>
+      <div class="stat-card signed"><div class="stat-value" id="signedCount">0</div><div class="stat-label">Signed</div></div>
+      <div class="stat-card unsigned"><div class="stat-value" id="unsignedCount">0</div><div class="stat-label">Unsigned</div></div>
+    </div>
+
+    <div id="progressContainer" style="display:none;">
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="all-signed-banner" id="allSignedBanner" style="display:none;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      All waivers signed — good to go!
+    </div>
+
+    <div class="guest-list-header" id="guestListHeader" style="display:none;">
+      <div class="guest-list-title">Guest Manifest</div>
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all" onclick="setFilter('all', this)">All</button>
+        <button class="filter-tab" data-filter="unsigned" onclick="setFilter('unsigned', this)">Unsigned</button>
+        <button class="filter-tab" data-filter="signed" onclick="setFilter('signed', this)">Signed</button>
+      </div>
+    </div>
+
+    <div class="guest-list" id="guestList">
+      <div class="empty-state">
+        <div class="empty-state-title">Select a session</div>
+        <div class="empty-state-text">Choose a session above to see the guest manifest</div>
+      </div>
+    </div>
+
+    <div class="auto-refresh-bar" id="autoRefreshBar" style="display:none;">
+      <div class="auto-refresh-dot"></div>
+      Auto-refreshing every 2 minutes
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── State ──
+  const state = {
+    pin: '',
+    sessions: [],
+    activeSession: null,
+    guests: [],
+    filter: 'all',
+    refreshTimer: null,
+  };
+
+  const SVG_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  const SVG_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+
+  // ── API Helpers ──
+  async function apiGet(path) {
+    const res = await fetch(path, {
+      headers: { 'X-Dashboard-Pin': state.pin },
+    });
+    if (res.status === 401) {
+      showError('Invalid PIN. Please reload and try again.');
+      throw new Error('Unauthorized');
+    }
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+  }
+
+  async function apiPost(path, body) {
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Dashboard-Pin': state.pin,
+      },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) {
+      showError('Invalid PIN. Please reload and try again.');
+      throw new Error('Unauthorized');
+    }
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+  }
+
+  // ── PIN ──
+  document.getElementById('pinInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitPin();
+  });
+
+  async function submitPin() {
+    const input = document.getElementById('pinInput');
+    state.pin = input.value.trim();
+    if (!state.pin) {
+      input.classList.add('error');
+      setTimeout(() => input.classList.remove('error'), 400);
+      return;
+    }
+
+    try {
+      // Test the PIN by making a real API call
+      await apiGet('/api/sessions');
+      document.getElementById('pinScreen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('refreshBtn').style.display = 'flex';
+      loadSessions();
+    } catch (err) {
+      input.classList.add('error');
+      input.value = '';
+      setTimeout(() => input.classList.remove('error'), 400);
+    }
+  }
+
+  // ── Sessions ──
+  async function loadSessions() {
+    try {
+      hideError();
+      document.getElementById('sessionLabel').textContent = 'Loading sessions...';
+      const data = await apiGet('/api/sessions');
+      state.sessions = data.sessions || [];
+
+      if (state.sessions.length === 0) {
+        document.getElementById('sessionLabel').textContent = `Today\u2019s Sessions \u2014 ${data.date}`;
+        document.getElementById('sessionPills').innerHTML = '<div style="color:var(--text-muted);font-size:14px;padding:8px 0;">No sessions found for today</div>';
+        return;
+      }
+
+      document.getElementById('sessionLabel').textContent = `Today\u2019s Sessions \u2014 ${data.date} \u2014 ${state.sessions.length} session${state.sessions.length > 1 ? 's' : ''}`;
+      renderSessionPills();
+
+      // Start auto-refresh
+      if (state.refreshTimer) clearInterval(state.refreshTimer);
+      state.refreshTimer = setInterval(() => {
+        if (state.activeSession) loadGuestsForSession(state.activeSession);
+      }, 120000);
+
+    } catch (err) {
+      showError('Failed to load sessions from Rezdy. Check API key configuration.');
+      console.error(err);
+    }
+  }
+
+  function renderSessionPills() {
+    document.getElementById('sessionPills').innerHTML = state.sessions.map(s => `
+      <button class="session-pill ${state.activeSession?.id === s.id ? 'active' : ''}" onclick="selectSession('${s.id}')">
+        <span class="session-pill-time">${s.displayTime}</span>
+        <span class="session-pill-info">${s.primarySource} \u00B7 ${s.totalPax} pax</span>
+      </button>
+    `).join('');
+  }
+
+  async function selectSession(id) {
+    const session = state.sessions.find(s => s.id === id);
+    if (!session) return;
+    state.activeSession = session;
+    renderSessionPills();
+    await loadGuestsForSession(session);
+  }
+
+  // ── Guests + Waiver Status ──
+  async function loadGuestsForSession(session) {
+    const guestList = document.getElementById('guestList');
+    guestList.innerHTML = '<div class="loading-state">Checking waiver status...</div>';
+
+    // Show stats area
+    document.getElementById('statsBar').style.display = 'flex';
+    document.getElementById('progressContainer').style.display = 'block';
+    document.getElementById('guestListHeader').style.display = 'flex';
+    document.getElementById('autoRefreshBar').style.display = 'flex';
+
+    try {
+      const bookings = session.bookings || [];
+      const emails = bookings.map(b => b.email).filter(e => e);
+
+      // Check waiver status for all emails
+      let waiverResults = {};
+      if (emails.length > 0) {
+        const waiverData = await apiPost('/api/waiver-status', { emails });
+        waiverResults = waiverData.results || {};
+      }
+
+      // Merge booking data with waiver status
+      state.guests = bookings.map(b => {
+        const emailKey = b.email.toLowerCase().trim();
+        const waiverInfo = waiverResults[emailKey] || { signed: false };
+        return {
+          ...b,
+          waiverSigned: waiverInfo.signed,
+          signedAt: waiverInfo.signedAt,
+        };
+      });
+
+      // Sort: unsigned first
+      state.guests.sort((a, b) => a.waiverSigned - b.waiverSigned);
+      renderGuests();
+
+    } catch (err) {
+      guestList.innerHTML = '<div class="empty-state"><div class="empty-state-title">Error loading waiver data</div><div class="empty-state-text">Check Waiver Forever API key configuration</div></div>';
+      console.error(err);
+    }
+  }
+
+  function renderGuests() {
+    const guests = state.guests;
+    const signed = guests.filter(g => g.waiverSigned).length;
+    const unsigned = guests.length - signed;
+    const pct = guests.length > 0 ? Math.round((signed / guests.length) * 100) : 0;
+
+    document.getElementById('totalGuests').textContent = guests.length;
+    document.getElementById('signedCount').textContent = signed;
+    document.getElementById('unsignedCount').textContent = unsigned;
+    document.getElementById('progressFill').style.width = `${pct}%`;
+    document.getElementById('allSignedBanner').style.display = unsigned === 0 && guests.length > 0 ? 'flex' : 'none';
+
+    let filtered = guests;
+    if (state.filter === 'signed') filtered = guests.filter(g => g.waiverSigned);
+    if (state.filter === 'unsigned') filtered = guests.filter(g => !g.waiverSigned);
+
+    if (filtered.length === 0) {
+      document.getElementById('guestList').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-title">No ${state.filter !== 'all' ? state.filter + ' ' : ''}guests</div>
+          <div class="empty-state-text">${state.filter === 'unsigned' ? 'Everyone has signed!' : 'No guests match this filter'}</div>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('guestList').innerHTML = filtered.map(g => {
+      const signedTimeStr = g.signedAt ? formatSignedTime(g.signedAt) : '';
+      return `
+      <div class="guest-row ${g.waiverSigned ? 'signed-row' : 'unsigned-row'}">
+        <div class="status-dot ${g.waiverSigned ? 'signed' : 'unsigned'}">${g.waiverSigned ? SVG_CHECK : SVG_X}</div>
+        <div class="guest-info">
+          <div class="guest-name">${escHtml(g.firstName)} ${escHtml(g.lastName)}</div>
+          <div class="guest-meta">
+            <span>${escHtml(g.email || 'No email')}</span>
+            <span class="guest-meta-sep"></span>
+            <span>${escHtml(g.orderNumber)}</span>
+          </div>
+        </div>
+        <div class="guest-pax">${g.pax} pax</div>
+        ${g.waiverSigned
+          ? `<div class="signed-label">${signedTimeStr}</div>`
+          : `<button class="sign-btn" onclick="openSignPage('${escAttr(g.email)}', '${escAttr(g.firstName + ' ' + g.lastName)}')">Sign Now</button>`
+        }
+      </div>`;
+    }).join('');
+  }
+
+  // ── Actions ──
+  function setFilter(filter, el) {
+    state.filter = filter;
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    renderGuests();
+  }
+
+  async function handleRefresh() {
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('spinning');
+    try {
+      if (state.activeSession) {
+        await loadGuestsForSession(state.activeSession);
+      } else {
+        await loadSessions();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    btn.classList.remove('spinning');
+  }
+
+  async function openSignPage(email, name) {
+    try {
+      const data = await apiGet(`/api/sign-url?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}`);
+      if (data.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (err) {
+      // Fallback: just note the error
+      alert('Could not generate signing link. Please check configuration.');
+    }
+  }
+
+  // ── Helpers ──
+  function showError(msg) {
+    const el = document.getElementById('errorBanner');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideError() {
+    document.getElementById('errorBanner').style.display = 'none';
+  }
+  function escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function escAttr(s) {
+    if (!s) return '';
+    return s.replace(/'/g, "\\'").replace(/"/g, '\\"');
+  }
+  function formatSignedTime(isoStr) {
+    try {
+      const d = new Date(isoStr);
+      const now = new Date();
+      const diffH = Math.floor((now - d) / 3600000);
+      if (diffH < 1) return 'Signed < 1h ago';
+      if (diffH < 24) return `Signed ${diffH}h ago`;
+      const diffD = Math.floor(diffH / 24);
+      return `Signed ${diffD}d ago`;
+    } catch { return 'Signed'; }
+  }
+
+  // Auto-focus PIN input
+  document.getElementById('pinInput').focus();
+</script>
+
+</body>
+</html>
