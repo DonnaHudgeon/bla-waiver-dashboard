@@ -322,7 +322,7 @@
     document.getElementById('sessionPills').innerHTML = state.sessions.map(s => `
       <button class="session-pill ${state.activeSession?.id === s.id ? 'active' : ''}" onclick="selectSession('${s.id}')">
         <span class="session-pill-time">${s.displayTime}</span>
-        <span class="session-pill-info">${s.primarySource} \u00B7 ${s.totalPax} pax</span>
+        <span class="session-pill-info">${s.orderCount} orders \u00B7 ${s.totalPax} pax</span>
       </button>
     `).join('');
   }
