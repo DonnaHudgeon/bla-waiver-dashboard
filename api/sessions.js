@@ -43,17 +43,22 @@ module.exports = async (req, res) => {
     for (const booking of bookings) {
       if (!booking.items || booking.items.length === 0) continue;
 
+      const customer = booking.customer || {};
+
+      // Build display name - skip bookings with no customer name (cruise ship groups)
+      let displayName = '';
+      if (customer.firstName || customer.lastName) {
+        displayName = ((customer.firstName || '') + ' ' + (customer.lastName || '')).trim();
+      } else if (customer.name) {
+        displayName = customer.name.trim();
+      }
+      if (!displayName || displayName.toLowerCase() === 'cruise ship') continue;
+
       for (const item of booking.items) {
         const startTime = item.startTimeLocal || item.startTime;
         if (!startTime) continue;
 
-        let hour;
-        if (startTime.includes('T')) {
-          hour = startTime.substring(11, 13);
-        } else {
-          hour = startTime.substring(11, 13);
-        }
-
+        const hour = startTime.substring(11, 13);
         const bookingDate = startTime.substring(0, 10);
         if (bookingDate !== dateStr) continue;
 
@@ -69,20 +74,29 @@ module.exports = async (req, res) => {
           };
         }
 
-        const customer = booking.customer || {};
-        const totalQuantity = (item.quantities || []).reduce((sum, q) => sum + (q.quantity || 0), 0) || 1;
+        // Calculate pax from quantities
+        let pax = 0;
+        if (item.quantities && item.quantities.length > 0) {
+          for (const q of item.quantities) {
+            pax += (q.quantity || 0);
+          }
+        }
+        if (pax === 0) pax = 1;
+
+        // Double kart = 2 people per kart
+        const productName = (item.productName || '').toLowerCase();
+        if (productName.includes('double')) {
+          pax = pax * 2;
+        }
 
         hourMap[hourKey].bookings.push({
           orderNumber: booking.orderNumber || '',
-          firstName: customer.firstName || '',
-          lastName: customer.lastName || '',
-          email: (customer.email || '').toLowerCase().trim(),
-          phone: customer.phone || '',
-          pax: totalQuantity,
+          displayName: displayName,
+          pax: pax,
           productName: item.productName || '',
         });
 
-        hourMap[hourKey].totalPax += totalQuantity;
+        hourMap[hourKey].totalPax += pax;
       }
     }
 
