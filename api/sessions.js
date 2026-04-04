@@ -1,16 +1,11 @@
 const fetch = require('node-fetch');
 const checkAuth = require('./_auth');
 
-// GET /api/sessions
-// Returns today's sessions from Rezdy with booking counts
-
 module.exports = async (req, res) => {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'X-Dashboard-Pin, Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Auth check
   if (!checkAuth(req)) {
     return res.status(401).json({ error: 'Invalid PIN' });
   }
@@ -21,16 +16,16 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Get today's date range in local Bonaire time (UTC-4, AST)
     const now = new Date();
-    const bonaireOffset = -4 * 60; // UTC-4 in minutes
-    const localNow = new Date(now.getTime() + (bonaireOffset + now.getTimezoneOffset()) * 60000);
-    const dateStr = localNow.toISOString().split('T')[0];
+    const bonaireNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Curacao' }));
+    const year = bonaireNow.getFullYear();
+    const month = String(bonaireNow.getMonth() + 1).padStart(2, '0');
+    const day = String(bonaireNow.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
 
     const startLocal = `${dateStr} 00:00:00`;
     const endLocal = `${dateStr} 23:59:59`;
 
-    // Fetch bookings for today from Rezdy
     const url = `https://api.rezdy.com/v1/bookings?apiKey=${REZDY_API_KEY}&startTimeLocal=${encodeURIComponent(startLocal)}&endTimeLocal=${encodeURIComponent(endLocal)}&status=CONFIRMED&limit=200`;
 
     const response = await fetch(url);
@@ -43,8 +38,7 @@ module.exports = async (req, res) => {
     const data = await response.json();
     const bookings = data.bookings || [];
 
-    // Group bookings by session time
-    const sessionMap = {};
+    const hourMap = {};
 
     for (const booking of bookings) {
       if (!booking.items || booking.items.length === 0) continue;
@@ -53,68 +47,55 @@ module.exports = async (req, res) => {
         const startTime = item.startTimeLocal || item.startTime;
         if (!startTime) continue;
 
-        const sessionKey = startTime;
-        if (!sessionMap[sessionKey]) {
-          sessionMap[sessionKey] = {
-            id: sessionKey,
-            startTime: startTime,
-            productName: item.productName || 'Landsailing Excursion',
+        let hour;
+        if (startTime.includes('T')) {
+          hour = startTime.substring(11, 13);
+        } else {
+          hour = startTime.substring(11, 13);
+        }
+
+        const bookingDate = startTime.substring(0, 10);
+        if (bookingDate !== dateStr) continue;
+
+        const hourKey = `${hour}:00`;
+
+        if (!hourMap[hourKey]) {
+          hourMap[hourKey] = {
+            id: hourKey,
+            displayTime: hourKey,
+            hourSort: parseInt(hour),
             bookings: [],
             totalPax: 0,
           };
         }
 
-        // Extract guest info
         const customer = booking.customer || {};
         const totalQuantity = (item.quantities || []).reduce((sum, q) => sum + (q.quantity || 0), 0) || 1;
 
-        // Determine source/agent
-        let source = 'Direct / Online';
-        if (booking.resellerName) {
-          source = booking.resellerName;
-        } else if (booking.source) {
-          source = booking.source;
-        }
-
-        sessionMap[sessionKey].bookings.push({
-          orderNumber: booking.orderNumber,
+        hourMap[hourKey].bookings.push({
+          orderNumber: booking.orderNumber || '',
           firstName: customer.firstName || '',
           lastName: customer.lastName || '',
           email: (customer.email || '').toLowerCase().trim(),
           phone: customer.phone || '',
           pax: totalQuantity,
-          source: source,
+          productName: item.productName || '',
         });
 
-        sessionMap[sessionKey].totalPax += totalQuantity;
+        hourMap[hourKey].totalPax += totalQuantity;
       }
     }
 
-    // Convert to array sorted by time
-    const sessions = Object.values(sessionMap).sort((a, b) =>
-      new Date(a.startTime) - new Date(b.startTime)
-    );
+    const sessions = Object.values(hourMap).sort((a, b) => a.hourSort - b.hourSort);
 
-    // Format times for display
     sessions.forEach(session => {
-      const d = new Date(session.startTime);
-      // Format as HH:MM
-      const hours = d.getHours ? d.getHours() : parseInt(session.startTime.substring(11, 13));
-      const mins = session.startTime.substring(14, 16);
-      session.displayTime = `${String(hours).padStart(2, '0')}:${mins}`;
-
-      // Determine primary source for the session
-      const sourceCounts = {};
-      session.bookings.forEach(b => {
-        sourceCounts[b.source] = (sourceCounts[b.source] || 0) + b.pax;
-      });
-      const topSource = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1])[0];
-      session.primarySource = topSource ? topSource[0] : 'Mixed';
+      session.orderCount = session.bookings.length;
     });
 
     return res.status(200).json({
       date: dateStr,
       sessionCount: sessions.length,
+      totalPax: sessions.reduce((sum, s) => sum + s.totalPax, 0),
       sessions: sessions,
     });
 
